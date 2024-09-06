@@ -12,7 +12,7 @@ load_dotenv()
 pg_url = os.getenv("SUPABASE_DB_URL")
 
 # Title of the app
-st.title("STREAMLIT  ETL Process with Visualizations (Supabase PostgreSQL)")
+st.title("STREAMLIT ETL Process with Visualizations (Supabase PostgreSQL)")
 
 # Step 1: Extract - Load the predefined CSV file
 st.header("Step 1: Extract")
@@ -45,17 +45,17 @@ st.write(df.head())
 # Visualization Section
 st.header("Data Visualization")
 
-# Example 1: Bar chart of a selected column
+# Bar chart
 selected_column = st.selectbox("Select a column to visualize as a bar chart", df.columns)
 if selected_column:
     st.bar_chart(df[selected_column].value_counts())
 
-# Example 2: Line chart over time (if there’s a time-related column)
+# Line chart
 time_column = st.selectbox("Select a time-related column for line chart", df.columns)
 if time_column:
     st.line_chart(df.groupby(time_column).size())
 
-# Example 3: Histogram of a numeric column
+# Histogram
 numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
 selected_numeric_column = st.selectbox("Select a numeric column for histogram", numeric_columns)
 if selected_numeric_column:
@@ -68,6 +68,31 @@ if selected_numeric_column:
     ax.set_xlabel(selected_numeric_column)
     ax.set_ylabel('Frequency')
     st.pyplot(fig)
+
+# Pie chart
+st.subheader("Pie Chart")
+pie_column = st.selectbox("Select a column for Pie Chart", df.columns)
+if pie_column:
+    pie_data = df[pie_column].value_counts()
+    fig, ax = plt.subplots()
+    ax.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    st.pyplot(fig)
+
+# Stacked bar chart
+st.subheader("Stacked Bar Chart")
+x_column = st.selectbox("Select X-axis column for stacked bar chart", df.columns)
+y_column = st.selectbox("Select Y-axis column for stacked bar chart", df.columns)
+if x_column and y_column:
+    grouped_data = df.groupby([x_column, y_column]).size().unstack(fill_value=0)
+    st.bar_chart(grouped_data)
+
+# Scatter plot
+if len(numeric_columns) > 1:
+    x_axis = st.selectbox("Select X-axis for scatter plot", numeric_columns)
+    y_axis = st.selectbox("Select Y-axis for scatter plot", numeric_columns)
+    if x_axis and y_axis:
+        st.scatter_chart(df[[x_axis, y_axis]])
 
 # Step 4: Load - Save Data to Supabase PostgreSQL
 st.header("Step 3: Load")
@@ -98,14 +123,7 @@ if st.checkbox("Display Data from Supabase PostgreSQL"):
     except Exception as e:
         st.error(f"An error occurred while fetching data: {e}")
 
-# Example 4: Scatter plot
-if len(numeric_columns) > 1:
-    x_axis = st.selectbox("Select X-axis for scatter plot", numeric_columns)
-    y_axis = st.selectbox("Select Y-axis for scatter plot", numeric_columns)
-    if x_axis and y_axis:
-        st.scatter_chart(df[[x_axis, y_axis]])
-
-# Step 5: Add data to the Supabase PostgreSQL database
+# Add new row feature
 st.header("Step 4: Add Data to the Supabase PostgreSQL Database")
 
 if st.checkbox("Add a new row to the table"):
