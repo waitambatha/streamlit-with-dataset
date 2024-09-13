@@ -1,91 +1,86 @@
 
-# ETL Process with Visualizations using Supabase PostgreSQL
+---
 
-This is a Streamlit-based application that performs an ETL (Extract, Transform, Load) process on a dataset, followed by data visualization. The app allows users to load data from a CSV file, clean and transform it, and store the processed data into a **Supabase PostgreSQL** database. Users can also visualize the data using various charts and add new data entries directly to the database.
+# Mortality Data Dashboard
+
+## Overview
+
+The Mortality Data Dashboard is a Streamlit application designed to visualize and analyze mortality data from different countries over time. This application allows users to interact with data through various functionalities, including data overview, country-wise trends, age group comparisons, and more. Additionally, users can add, modify, and delete records in the Supabase PostgreSQL database, and view the stored data directly within the app.
 
 ## Features
 
-### 1. **Extract**
-- Load data from a CSV file.
-- Preview the first few rows of the dataset.
-
-### 2. **Transform**
-- Drop rows with missing values.
-- Rename columns as needed.
-- Preview the transformed data.
-
-### 3. **Visualize**
-- Generate a **bar chart** for categorical data.
-- Create a **line chart** for time-based data.
-- Plot a **histogram** for numerical data.
-- Display a **scatter plot** for two numerical columns.
-
-### 4. **Load**
-- Save the transformed data to a **Supabase PostgreSQL** database table (`mortality_data`).
-- Fetch and display the data stored in the PostgreSQL database.
-
-### 5. **Add Data**
-- Insert new rows of data into the **Supabase PostgreSQL** database.
-
-## Prerequisites
-
-- Python 3.8+
-- A Supabase PostgreSQL database
-- A `.env` file with the following variables:
-
-```bash
-SUPABASE_DB_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DBNAME>
-```
-
-Replace `<USER>`, `<PASSWORD>`, `<HOST>`, `<PORT>`, and `<DBNAME>` with your Supabase credentials.
+1. **Data Overview**: View a summary of the dataset.
+2. **Country-wise Mortality Trends**: Visualize mortality trends for a selected country.
+3. **Age Group Comparison**: Compare mortality rates across different age groups within a selected country.
+4. **Top N Countries by Mortality**: Display the top N countries by number of deaths for the latest year.
+5. **Gender-wise Mortality Trends**: View mortality trends based on gender.
+6. **Mortality Distribution**: Visualize the distribution of mortality rates using a histogram.
+7. **Custom Filters**: Apply filters to view data based on selected countries and age groups.
+8. **Mortality Rank Tracking**: Track and view the mortality rank for selected countries and years.
+9. **Yearly Changes Visualization**: Visualize changes in mortality rates over the years for selected countries.
+10. **Download Report**: Download a CSV report for a selected country.
+11. **Add New Data**: Insert new records into the database.
+12. **Modify Existing Data**: Update existing records in the database.
+13. **Delete Data**: Remove records from the database.
+14. **Display Data**: View data stored in the Supabase PostgreSQL database.
 
 ## Installation
 
-1. Clone the repository:
+### Prerequisites
 
-```bash
-git clone https://github.com/your-repository/etl-streamlit-supabase.git
-cd etl-streamlit-supabase
-```
+1. **Python 3.x**: Ensure that Python 3.x is installed on your system.
+2. **Supabase PostgreSQL Database**: You need access to a Supabase PostgreSQL database. 
 
-2. Install the required dependencies:
+### Setup
 
-```bash
-pip install -r requirements.txt
-```
+1. **Clone the Repository**
 
-3. Create a `.env` file in the root directory and add your Supabase connection URL:
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
 
-```bash
-SUPABASE_DB_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DBNAME>
-```
+2. **Install Dependencies**
 
-4. Download the dataset you want to use (e.g., `IHME_GBD_2010_MORTALITY_AGE_SPECIFIC_BY_COUNTRY_1970_2010.csv`) and place it in the root folder or update the file path in the code.
+   Create a virtual environment and install the required packages:
 
-## Running the App
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   pip install -r requirements.txt
+   ```
 
-1. Run the Streamlit app:
+3. **Configure Environment Variables**
 
-```bash
-streamlit run app.py
-```
+   Create a `.env` file in the root directory and add your Supabase database URL:
 
-2. Open your browser and go to the URL provided by Streamlit (usually `http://localhost:8501/`).
+   ```env
+   SUPABASE_DB_URL=your_supabase_database_url
+   ```
 
-## How to Use
+4. **Prepare the Database**
 
-- **Extract**: Start by loading the CSV file, which is displayed in the "Dataset Preview" section.
-- **Transform**: Use the transformation options to clean and rename the data.
-- **Visualize**: Select a column to generate a bar chart, line chart, histogram, or scatter plot.
-- **Load**: Once the data is cleaned, click the "Load Data into Supabase PostgreSQL" button to store it in the PostgreSQL database.
-- **Display**: Fetch and display data stored in the `mortality_data` table by selecting the checkbox.
-- **Add Data**: Add new rows to the table via input fields.
+   Ensure the `mortality_data` table exists in your Supabase PostgreSQL database with the appropriate schema.
 
-## Technologies Used
+5. **Run the App**
 
-- **Streamlit**: A web framework for building interactive data-driven applications.
-- **Pandas**: Used for data manipulation and analysis.
-- **SQLAlchemy**: For connecting to the Supabase PostgreSQL database.
-- **Matplotlib**: For creating visualizations.
-- **Supabase**: PostgreSQL database for storing the transformed data.
+   ```bash
+   streamlit run app.py
+   ```
+
+## Usage
+
+1. **Access the App**
+
+   Open your web browser and navigate to `http://localhost:8501` to access the Streamlit application.
+
+2. **Interact with the Dashboard**
+
+   - Use the navigation headers to access different functionalities.
+   - Apply filters, view trends, and visualize data as per your needs.
+   - Use the forms to add, modify, or delete data in the database.
+
+3. **Download Reports**
+
+   Select a country and download the mortality report in CSV format.
 

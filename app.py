@@ -5,136 +5,253 @@ from sqlalchemy import create_engine
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-# Supabase connection URL from .env file
-pg_url = os.getenv("SUPABASE_DB_URL")
+# Database connection setup
+SUPABASE_DB_URL = os.getenv('SUPABASE_DB_URL')
+engine = create_engine(SUPABASE_DB_URL)
 
-# Title of the app
-st.title("STREAMLIT ETL Process with Visualizations (Supabase PostgreSQL)")
 
-# Step 1: Extract - Load the predefined CSV file
-st.header("Step 1: Extract")
-file_path = 'IHME_GBD_2010_MORTALITY_AGE_SPECIFIC_BY_COUNTRY_1970_2010.csv'  # Update with your file path if necessary
-df = pd.read_csv(file_path)
+def load_data():
+    # Load the data from the Supabase PostgreSQL database into a DataFrame
+    query = "SELECT * FROM mortality_data;"
+    df = pd.read_sql(query, engine)
 
-# Show the first few rows of the dataset
-st.subheader("Dataset Preview")
-st.write(df.head())
+    # Convert relevant columns to numeric
+    df['Number of Deaths'] = pd.to_numeric(df['Number of Deaths'], errors='coerce')
+    df['Death Rate Per 100,000'] = pd.to_numeric(df['Death Rate Per 100,000'], errors='coerce')
 
-# Step 2: Transform - Data Cleaning and Transformation
-st.header("Step 2: Transform")
+    return df
 
-# Option to drop missing values
-if st.checkbox("Drop rows with missing values"):
-    df.dropna(inplace=True)
-    st.write("Dropped rows with missing values.")
 
-# Option to rename columns
-st.subheader("Rename Columns")
-for col in df.columns:
-    new_col_name = st.text_input(f"Rename column '{col}'", col)
-    if new_col_name:
-        df.rename(columns={col: new_col_name}, inplace=True)
+# Load data
+data = load_data()
 
-# Show transformed data
-st.subheader("Transformed Data Preview")
-st.write(df.head())
+# Functionality 1: Data Overview
+st.title("Mortality Data Dashboard")
+st.header("1. Data Overview")
+st.write(data.head())
 
-# Visualization Section
-st.header("Data Visualization")
+# Functionality 2: Country-wise Mortality Trends
+st.header("2. Country-wise Mortality Trends")
+country = st.selectbox('Select a Country', data['Country Name'].unique())
+yearly_data = data[data['Country Name'] == country]
 
-# Bar chart
-selected_column = st.selectbox("Select a column to visualize as a bar chart", df.columns)
-if selected_column:
-    st.bar_chart(df[selected_column].value_counts())
+# Ensure the lengths of x and y are consistent before plotting
+if not yearly_data.empty:
+    st.subheader(f"Mortality Trends in {country}")
+    plt.figure(figsize=(10, 5))
+    plt.plot(yearly_data['Year'], yearly_data['Number of Deaths'], marker='o')
+    plt.title(f'Mortality Trends in {country}')
+    plt.xlabel('Year')
+    plt.ylabel('Mortality Rate')
+    st.pyplot(plt)
+else:
+    st.warning(f"No data available for {country}.")
 
-# Line chart
-time_column = st.selectbox("Select a time-related column for line chart", df.columns)
-if time_column:
-    st.line_chart(df.groupby(time_column).size())
+# Functionality 3: Age Group Comparison
+st.header("3. Age Group Comparison")
+age_groups = data['Age Group'].unique()
+selected_age_group = st.selectbox('Select Age Group', age_groups)
+age_group_data = data[(data['Country Name'] == country) & (data['Age Group'] == selected_age_group)]
 
-# Histogram
-numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
-selected_numeric_column = st.selectbox("Select a numeric column for histogram", numeric_columns)
-if selected_numeric_column:
-    st.write(df[selected_numeric_column].describe())
+# Ensure the lengths of x and y are consistent before plotting
+if not age_group_data.empty:
+    st.subheader(f"Mortality Rates for {selected_age_group} in {country}")
+    plt.figure(figsize=(10, 5))
+    plt.bar(age_group_data['Year'], age_group_data['Number of Deaths'], color='skyblue')
+    plt.title(f'Mortality Rates for {selected_age_group} in {country}')
+    plt.xlabel('Year')
+    plt.ylabel('Number of Deaths')
+    st.pyplot(plt)
+else:
+    st.warning(f"No data available for {selected_age_group} in {country}.")
 
-    # Create and display histogram using matplotlib
-    fig, ax = plt.subplots()
-    ax.hist(df[selected_numeric_column], bins=20, color='blue', edgecolor='black')
-    ax.set_title(f'Histogram of {selected_numeric_column}')
-    ax.set_xlabel(selected_numeric_column)
-    ax.set_ylabel('Frequency')
-    st.pyplot(fig)
+# Functionality 4: Top N Countries by Mortality
+st.header("4. Top N Countries by Mortality")
 
-# Pie chart
-st.subheader("Pie Chart")
-pie_column = st.selectbox("Select a column for Pie Chart", df.columns)
-if pie_column:
-    pie_data = df[pie_column].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', startangle=90)
-    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-    st.pyplot(fig)
+# Convert 'Number of Deaths' to numeric, forcing errors to NaN (if any)
+data['Number of Deaths'] = pd.to_numeric(data['Number of Deaths'], errors='coerce')
 
-# Stacked bar chart
-st.subheader("Stacked Bar Chart")
-x_column = st.selectbox("Select X-axis column for stacked bar chart", df.columns)
-y_column = st.selectbox("Select Y-axis column for stacked bar chart", df.columns)
-if x_column and y_column:
-    grouped_data = df.groupby([x_column, y_column]).size().unstack(fill_value=0)
-    st.bar_chart(grouped_data)
+# Use a slider to select the number of top countries to display
+n_countries = st.slider('Select number of countries', 1, 10, 5)
 
-# Scatter plot
-if len(numeric_columns) > 1:
-    x_axis = st.selectbox("Select X-axis for scatter plot", numeric_columns)
-    y_axis = st.selectbox("Select Y-axis for scatter plot", numeric_columns)
-    if x_axis and y_axis:
-        st.scatter_chart(df[[x_axis, y_axis]])
+# Find the latest year in the data
+latest_year = data['Year'].max()
 
-# Step 4: Load - Save Data to Supabase PostgreSQL
-st.header("Step 3: Load")
+# Filter the data for the latest year and find the top N countries by number of deaths
+top_countries = data[data['Year'] == latest_year].nlargest(n_countries, 'Number of Deaths')
 
-# Fixed table name to 'mortality_data'
-table_name_pg = "mortality_data"
+# Display the result
+st.write(top_countries)
 
-if st.button("Load Data into Supabase PostgreSQL"):
-    try:
-        # Connect to Supabase PostgreSQL database
-        engine = create_engine(pg_url)
+# Ensure there is data before plotting
+if not top_countries.empty:
+    st.subheader(f'Top {n_countries} Countries by Mortality in {latest_year}')
+    plt.figure(figsize=(10, 5))
+    plt.bar(top_countries['Country Name'], top_countries['Number of Deaths'], color='green')
+    plt.title(f'Top {n_countries} Countries by Mortality in {latest_year}')
+    plt.xlabel('Country Name')
+    plt.ylabel('Number of Deaths')
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+else:
+    st.warning(f"No data available for top {n_countries} countries in {latest_year}.")
 
-        # Load data into Supabase PostgreSQL
-        df.to_sql(table_name_pg, engine, if_exists='replace', index=False)
-        st.success(f"Data loaded successfully into Supabase PostgreSQL (Table: {table_name_pg})")
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+# Functionality 5: Gender-wise Mortality Trends
+st.header("5. Gender-wise Mortality Trends")
+selected_gender = st.radio('Select Gender', ['Male', 'Female'])
+gender_data = data[(data['Country Name'] == country) & (data['Sex'] == selected_gender)]
 
-# Option to display SQL table from Supabase PostgreSQL
-if st.checkbox("Display Data from Supabase PostgreSQL"):
-    try:
-        engine = create_engine(pg_url)
-        query_pg = f"SELECT * FROM {table_name_pg}"
-        result_df_pg = pd.read_sql(query_pg, engine)
+# Ensure the lengths of x and y are consistent before plotting
+if not gender_data.empty:
+    st.subheader(f'{selected_gender} Mortality Trends in {country}')
+    plt.figure(figsize=(10, 5))
+    plt.plot(gender_data['Year'], gender_data['Number of Deaths'], marker='o', color='red')
+    plt.title(f'{selected_gender} Mortality Trends in {country}')
+    plt.xlabel('Year')
+    plt.ylabel('Number of Deaths')
+    st.pyplot(plt)
+else:
+    st.warning(f"No data available for {selected_gender} in {country}.")
 
-        st.subheader(f"Data in {table_name_pg} Table (Supabase PostgreSQL)")
-        st.write(result_df_pg)
-    except Exception as e:
-        st.error(f"An error occurred while fetching data: {e}")
+# Functionality 6: Mortality Distribution
+st.header("6. Distribution of Mortality Rates")
+st.subheader("Mortality Rate Histogram")
+plt.figure(figsize=(10, 5))
+plt.hist(data['Number of Deaths'], bins=50, color='purple')
+plt.title('Distribution of Mortality Rates')
+plt.xlabel('Mortality Rate')
+plt.ylabel('Frequency')
+st.pyplot(plt)
 
-# Add new row feature
-st.header("Step 4: Add Data to the Supabase PostgreSQL Database")
+# Functionality 7: Custom Filters
+st.header("7. Custom Filters")
+filter_country = st.multiselect('Select Country', data['Country Name'].unique())
+filter_age_group = st.multiselect('Select Age Group', data['Age Group'].unique())
+filtered_data = data[data['Country Name'].isin(filter_country) & data['Age Group'].isin(filter_age_group)]
+st.write(filtered_data)
 
-if st.checkbox("Add a new row to the table"):
-    new_data = {}
-    for col in df.columns:
-        new_data[col] = st.text_input(f"Enter value for {col}", "")
+# Functionality 8: Mortality Rank Tracking
+st.header("8. Mortality Rank Tracking")
+rank_year = st.slider('Select Year for Ranking', int(data['Year'].min()), int(data['Year'].max()), step=1)
+rank_data = data[data['Year'] == rank_year].sort_values('Number of Deaths', ascending=False)
+st.write(rank_data[['Country Name', 'Number of Deaths']])
 
-    if st.button("Add Data to Supabase PostgreSQL"):
-        try:
-            new_df = pd.DataFrame([new_data])
-            new_df.to_sql(table_name_pg, engine, if_exists='append', index=False)
-            st.success("New data added successfully to Supabase PostgreSQL")
-        except Exception as e:
-            st.error(f"An error occurred while adding data: {e}")
+# Functionality 9: Yearly Changes Visualization
+st.header("9. Yearly Changes in Mortality Rates")
+filtered_year_data = data[(data['Country Name'].isin(filter_country)) & (data['Year'].isin(filtered_data['Year']))]
+
+# Using Matplotlib for grouped bar chart
+plt.figure(figsize=(10, 5))
+for country in filter_country:
+    country_data = filtered_year_data[filtered_year_data['Country Name'] == country]
+    plt.bar(country_data['Year'], country_data['Number of Deaths'], label=country)
+plt.title("Yearly Mortality Rate Changes for Selected Countries")
+plt.xlabel('Year')
+plt.ylabel('Mortality Rate')
+plt.legend()
+st.pyplot(plt)
+
+# Functionality 10: Download Country-wise Mortality Report
+st.header("10. Download Country-wise Mortality Report")
+
+
+def generate_report(country):
+    report_data = data[data['Country Name'] == country]
+    return report_data.to_csv(index=False)
+
+
+selected_country_report = st.selectbox('Select Country for Report', data['Country Name'].unique())
+st.download_button(label="Download Report", data=generate_report(selected_country_report),
+                   file_name=f"{selected_country_report}_mortality_report.csv")
+
+# Functionality 11: Add New Data
+st.header("11. Add New Data")
+with st.form(key='add_data_form'):
+    country_code = st.text_input('Country Code')
+    country_name = st.text_input('Country Name')
+    year = st.number_input('Year', min_value=1970, max_value=2010)
+    age_group = st.text_input('Age Group')
+    sex = st.radio('Sex', ['Male', 'Female'])
+    number_of_deaths = st.number_input('Number of Deaths')
+    death_rate = st.number_input('Death Rate Per 100,000')
+
+    submit_button = st.form_submit_button(label='Add Data')
+
+    if submit_button:
+        new_data = {
+            'Country Code': country_code,
+            'Country Name': country_name,
+            'Year': year,
+            'Age Group': age_group,
+            'Sex': sex,
+            'Number of Deaths': number_of_deaths,
+            'Death Rate Per 100,000': death_rate
+        }
+        df_new = pd.DataFrame([new_data])
+        df_new.to_sql('mortality_data', engine, if_exists='append', index=False)
+        st.success('Data added successfully!')
+        data = load_data()  # Reload data
+
+# Functionality 12: Modify Existing Data
+st.header("12. Modify Existing Data")
+with st.form(key='modify_data_form'):
+    modify_country = st.selectbox('Select Country to Modify', data['Country Name'].unique())
+    modify_year = st.number_input('Select Year to Modify', min_value=1970, max_value=2010)
+    modify_age_group = st.text_input('Age Group to Modify')
+    modify_sex = st.radio('Sex to Modify', ['Male', 'Female'])
+    modify_number_of_deaths = st.number_input('New Number of Deaths')
+    modify_death_rate = st.number_input('New Death Rate Per 100,000')
+
+    modify_button = st.form_submit_button(label='Modify Data')
+
+    if modify_button:
+        update_query = f"""
+        UPDATE mortality_data
+        SET "Number of Deaths" = {modify_number_of_deaths},
+            "Death Rate Per 100,000" = {modify_death_rate}
+        WHERE "Country Name" = '{modify_country}' AND
+              "Year" = {modify_year} AND
+              "Age Group" = '{modify_age_group}' AND
+              "Sex" = '{modify_sex}';
+        """
+        with engine.connect() as connection:
+            connection.execute(update_query)
+        st.success('Data modified successfully!')
+        data = load_data()  # Reload data
+
+# Functionality 13: Delete Data
+st.header("13. Delete Data")
+with st.form(key='delete_data_form'):
+    delete_country = st.selectbox('Select Country to Delete Data', data['Country Name'].unique())
+    delete_year = st.number_input('Select Year to Delete Data', min_value=1970, max_value=2010)
+    delete_age_group = st.text_input('Age Group to Delete')
+    delete_sex = st.radio('Sex to Delete', ['Male', 'Female'])
+
+    delete_button = st.form_submit_button(label='Delete Data')
+
+    if delete_button:
+        delete_query = f"""
+        DELETE FROM mortality_data
+        WHERE "Country Name" = '{delete_country}' AND
+              "Year" = {delete_year} AND
+              "Age Group" = '{delete_age_group}' AND
+              "Sex" = '{delete_sex}';
+        """
+        with engine.connect() as connection:
+            connection.execute(delete_query)
+        st.success('Data deleted successfully!')
+        data = load_data()  # Reload data
+
+# Functionality 14: View Data from Database
+st.header("14. View Data from Database")
+view_data = st.selectbox('Select Data to View', ['All Data', 'Filtered Data'])
+if view_data == 'All Data':
+    st.write(data)
+elif view_data == 'Filtered Data':
+    filter_country = st.multiselect('Select Country', data['Country Name'].unique())
+    filter_age_group = st.multiselect('Select Age Group', data['Age Group'].unique())
+    filtered_data = data[data['Country Name'].isin(filter_country) & data['Age Group'].isin(filter_age_group)]
+    st.write(filtered_data)
